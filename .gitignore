@@ -1,0 +1,5 @@
+obj/
+bin/
+/.idea
+# JetBrains Rider/ReSharper user-specific settings
+*.DotSettings.user
