@@ -1,4 +1,32 @@
-/* Target Query */
+/* Ltree vs CTE */
+-- V2
+WITH RECURSIVE tree AS (
+    -- 起始節點
+    SELECT id, parent_id, level, name
+    FROM hierarchy_relation
+    WHERE name = 'Company1'
+      AND level = 1
+
+    UNION ALL
+
+    -- 遞歸查詢所有子節點
+    SELECT p.id, p.parent_id, p.level, p.name
+    FROM hierarchy_relation p
+             JOIN tree t ON p.parent_id = t.id)
+SELECT *
+FROM tree
+WHERE name != 'Company1';
+
+-- V3
+SELECT id,
+       path,
+       name
+FROM hierarchy_relation_ltree
+WHERE path <@ (SELECT path FROM hierarchy_relation_ltree WHERE name = 'Company1')
+                                                           AND name != 'Company1';
+
+/* V0 - 攤平 */
+    
 -- case1: all company
 select company, sum(balance) as total
 from flattening_records
