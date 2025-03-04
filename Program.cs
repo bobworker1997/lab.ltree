@@ -7,11 +7,11 @@ namespace LTreeApp;
 internal static class Program
 {
     // Configuration parameters - can be adjusted
-    private const int CompanyCount = 10;
-    private const int SubsystemsPerCompany = 15;
-    private const int WebIdsPerSubsystem = 20;
-    private const int PlayersPerWebId = 10;
-    private const int RecordsPerPlayer = 20;
+    private const int CompanyCount = 20;
+    private const int SubsystemsPerCompany = 25;
+    private const int WebIdsPerSubsystem = 30;
+    private const int PlayersPerWebId = 20;
+    private const int RecordsPerPlayer = 40;
 
     // Batch sizes for bulk inserts
     private const int BatchSize = 2000;
@@ -41,7 +41,6 @@ internal static class Program
         
         stopwatch.Stop();
         Console.WriteLine($"Data generation completed in {stopwatch.ElapsedMilliseconds / 1000.0} seconds");
-        Console.ReadKey();
     }
     
     private static async Task ClearExistingData()
