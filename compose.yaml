@@ -1,0 +1,11 @@
+﻿version: '3.8'
+
+services:
+  postgres-ltree-demo:
+    image: postgres:latest
+    ports:
+      - 5435:5432
+    environment:
+      - POSTGRES_USER=demo_user
+      - POSTGRES_PASSWORD=demo@123
+# docker-compose up -d

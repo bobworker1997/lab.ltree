@@ -1,0 +1,21 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LTreeApp", "LTreeApp.csproj", "{BA9AAED4-25A7-4D4E-9084-D7586FDDF305}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8E0108CC-9316-4BE2-A7F2-1107CADDA720}"
+	ProjectSection(SolutionItems) = preProject
+		compose.yaml = compose.yaml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BA9AAED4-25A7-4D4E-9084-D7586FDDF305}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA9AAED4-25A7-4D4E-9084-D7586FDDF305}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA9AAED4-25A7-4D4E-9084-D7586FDDF305}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA9AAED4-25A7-4D4E-9084-D7586FDDF305}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
