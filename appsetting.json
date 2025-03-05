@@ -1,0 +1,9 @@
+{
+  "ConnectionString": "Host=localhost:5435;Database=demo_user;Username=demo_user;Password=demo@123",
+  "CompanyCount": 20,
+  "SubsystemsPerCompany": 25,
+  "WebIdsPerSubsystem": 30,
+  "PlayersPerWebId": 20,
+  "RecordsPerPlayer": 40,
+  "BatchSize": 2000
+}

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Dapper;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 namespace LTreeApp;
@@ -7,21 +8,22 @@ namespace LTreeApp;
 internal static class Program
 {
     // Configuration parameters - can be adjusted
-    private const int CompanyCount = 20;
-    private const int SubsystemsPerCompany = 25;
-    private const int WebIdsPerSubsystem = 30;
-    private const int PlayersPerWebId = 20;
-    private const int RecordsPerPlayer = 40;
+    private static int _companyCount = 20;
+    private static int _subsystemsPerCompany = 25;
+    private static int _webIdsPerSubsystem = 30;
+    private static int _playersPerWebId = 20;
+    private static int _recordsPerPlayer = 40;
 
     // Batch sizes for bulk inserts
-    private const int BatchSize = 2000;
+    private static int _batchSize = 2000;
 
     // Connection string - replace with your actual connection string
-    // private static readonly string ConnectionString = "Host=localhost:5435;Database=postgres;Username=demo_user;Password=demo@123";
-    private const string ConnectionString = "Host=localhost:5435;Database=demo_user;Username=demo_user;Password=demo@123";
+    private static string _connectionString = "Host=localhost:5435;Database=demo_user;Username=demo_user;Password=demo@123";
 
     static async Task Main(string[] args)
     {
+        await GetSetting();
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
@@ -42,12 +44,48 @@ internal static class Program
         stopwatch.Stop();
         Console.WriteLine($"Data generation completed in {stopwatch.ElapsedMilliseconds / 1000.0} seconds");
     }
-    
+
+    private static async Task GetSetting()
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())  // 設定目前目錄為基底目錄
+            .AddJsonFile("appsetting.json", optional: false, reloadOnChange: true)  // 加載 appsettings.json
+            .Build();
+
+        var connectionString = configuration["ConnectionString"];
+        if(string.IsNullOrWhiteSpace(connectionString) == false)
+            _connectionString = connectionString;
+        
+        var companyCountString = configuration["CompanyCount"];
+        if(string.IsNullOrWhiteSpace(companyCountString) == false && int.TryParse(companyCountString, out var companyCount) == false)
+            _companyCount = companyCount;
+        
+        var subsystemsPerCompanyString = configuration["SubsystemsPerCompany"];
+        if(string.IsNullOrWhiteSpace(subsystemsPerCompanyString) == false && int.TryParse(subsystemsPerCompanyString, out var subsystemsPerCompany) == false)
+            _subsystemsPerCompany = subsystemsPerCompany;
+        
+        var webIdsPerSubsystemString = configuration["WebIdsPerSubsystem"];
+        if(string.IsNullOrWhiteSpace(webIdsPerSubsystemString) == false && int.TryParse(webIdsPerSubsystemString, out var webIdsPerSubsystem) == false)
+            _webIdsPerSubsystem = webIdsPerSubsystem;
+        
+        var playersPerWebIdString = configuration["PlayersPerWebId"];
+        if(string.IsNullOrWhiteSpace(playersPerWebIdString) == false && int.TryParse(playersPerWebIdString, out var playersPerWebId) == false)
+            _playersPerWebId = playersPerWebId;
+        
+        var recordPerPlayerString = configuration["RecordsPerPlayer"];
+        if(string.IsNullOrWhiteSpace(recordPerPlayerString) == false && int.TryParse(recordPerPlayerString, out var recordPerPlayer) == false)
+            _recordsPerPlayer = recordPerPlayer;
+        
+        var batchSizeString = configuration["BatchSize"];
+        if(string.IsNullOrWhiteSpace(batchSizeString) == false && int.TryParse(batchSizeString, out var batchSize) == false)
+            _batchSize = batchSize;
+    }
+
     private static async Task ClearExistingData()
     {
         Console.WriteLine("Clearing existing data...");
 
-        await using var connection = new NpgsqlConnection(ConnectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
         
         await connection.ExecuteAsync(@"
@@ -69,29 +107,29 @@ internal static class Program
         Console.WriteLine("Generating flattening records...");
         var sw = Stopwatch.StartNew();
 
-        await using var connection = new NpgsqlConnection(ConnectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
         
         var flattenedRecords = new List<(string Company, string SubSystem, string WebId, string PlayerName, int Balance)>();
         var random = new Random();
         
         // Pre-generate all company/subsystem/webid/player combinations
-        for (var c = 1; c <= CompanyCount; c++)
+        for (var c = 1; c <= _companyCount; c++)
         {
             var company = $"Company{c}";
             
-            for (var s = 1; s <= SubsystemsPerCompany; s++)
+            for (var s = 1; s <= _subsystemsPerCompany; s++)
             {
                 var subsystem = $"Subsystem{s}";
                 
-                for (var w = 1; w <= WebIdsPerSubsystem; w++)
+                for (var w = 1; w <= _webIdsPerSubsystem; w++)
                 {
                     var webId = $"WebId{w}";
                     
-                    for (var p = 1; p <= PlayersPerWebId; p++)
+                    for (var p = 1; p <= _playersPerWebId; p++)
                     {
                         var playerName = $"Player{c}_{s}_{w}_{p}";
-                        for (var r = 1; r <= RecordsPerPlayer; r++)
+                        for (var r = 1; r <= _recordsPerPlayer; r++)
                         {
                             // var balance = random.Next(1, 10000);
                             const int balance = 10;
@@ -113,9 +151,9 @@ internal static class Program
         return;
         static async Task BulkInsertFlatteningRecords(NpgsqlConnection connection, List<(string Company, string SubSystem, string WebId, string PlayerName, int Balance)> records)
         {
-            for (var i = 0; i < records.Count; i += BatchSize)
+            for (var i = 0; i < records.Count; i += _batchSize)
             {
-                var batch = records.Skip(i).Take(BatchSize).ToList();
+                var batch = records.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.Company}','{r.SubSystem}','{r.WebId}','{r.PlayerName}','{r.Balance}')"));
                 await connection.ExecuteAsync($"INSERT INTO flattening_records (company, sub_system, web_id, player_name, balance) VALUES {insertString}");
             }
@@ -127,7 +165,7 @@ internal static class Program
         Console.WriteLine("Generating hierarchical data (v1)...");
         var sw = Stopwatch.StartNew();
 
-        await using var connection = new NpgsqlConnection(ConnectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
         
         // Get the 'all' root node id
@@ -139,7 +177,7 @@ internal static class Program
         
         // Prepare company data
         var companies = new List<(int ParentId, int Level, string Name)>();
-        for (var c = 1; c <= CompanyCount; c++)
+        for (var c = 1; c <= _companyCount; c++)
         {
             companies.Add((allId, 1, $"Company{c}"));
         }
@@ -154,14 +192,14 @@ internal static class Program
         }
         
         // For each company, prepare subsystems
-        for (var c = 1; c <= CompanyCount; c++)
+        for (var c = 1; c <= _companyCount; c++)
         {
             var companyName = $"Company{c}";
             var companyId = relationIds[companyName];
             
             // Prepare subsystem data
             var subsystems = new List<(int ParentId, int Level, string Name)>();
-            for (var s = 1; s <= SubsystemsPerCompany; s++)
+            for (var s = 1; s <= _subsystemsPerCompany; s++)
             {
                 subsystems.Add((companyId, 2, $"Subsystem{s}"));
             }
@@ -176,14 +214,14 @@ internal static class Program
             }
             
             // For each subsystem, prepare webids
-            for (var s = 1; s <= SubsystemsPerCompany; s++)
+            for (var s = 1; s <= _subsystemsPerCompany; s++)
             {
                 var subsystemName = $"Subsystem{s}";
                 var subsystemId = relationIds[$"{companyName}_{subsystemName}"];
                 
                 // Prepare webid data
                 var webIds = new List<(int ParentId, int Level, string Name)>();
-                for (var w = 1; w <= WebIdsPerSubsystem; w++)
+                for (var w = 1; w <= _webIdsPerSubsystem; w++)
                 {
                     webIds.Add((subsystemId, 3, $"WebId{w}"));
                 }
@@ -198,14 +236,14 @@ internal static class Program
                 }
                 
                 // For each webid, generate players and records
-                for (var w = 1; w <= WebIdsPerSubsystem; w++)
+                for (var w = 1; w <= _webIdsPerSubsystem; w++)
                 {
                     var webIdName = $"WebId{w}";
                     var webIdId = relationIds[$"{companyName}_{subsystemName}_{webIdName}"];
                     
                     // Prepare player data
                     var players = new List<(int RelationId, string PlayerName)>();
-                    for (var p = 1; p <= PlayersPerWebId; p++)
+                    for (var p = 1; p <= _playersPerWebId; p++)
                     {
                         players.Add((webIdId, $"Player{c}_{s}_{w}_{p}"));
                     }
@@ -222,7 +260,7 @@ internal static class Program
                         var playerName = playerEntry.Key;
                         var playerId = playerEntry.Value;
                         
-                        for (var r = 1; r <= RecordsPerPlayer; r++)
+                        for (var r = 1; r <= _recordsPerPlayer; r++)
                         {
                             //var balance = random.Next(1, 10000);
                             const int balance = 10;
@@ -247,9 +285,9 @@ internal static class Program
             if (records.Count == 0)
                 return;
 
-            for (var i = 0; i < records.Count; i += BatchSize)
+            for (var i = 0; i < records.Count; i += _batchSize)
             {
-                var batch = records.Skip(i).Take(BatchSize).ToList();
+                var batch = records.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.RelationId}','{r.PlayerId}','{r.Balance}')"));
                 await connection.ExecuteAsync($"INSERT INTO hierarchy_records (relation_id, player_id, balance) VALUES {insertString}");
             }
@@ -263,9 +301,9 @@ internal static class Program
                 return result;
 
             var insertedPlayers = new List<(int Id, string PlayerName)>();
-            for (var i = 0; i < players.Count; i += BatchSize)
+            for (var i = 0; i < players.Count; i += _batchSize)
             {
-                var batch = players.Skip(i).Take(BatchSize).ToList();
+                var batch = players.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.RelationId}','{r.PlayerName}')"));
                 var insertResult = await connection.QueryAsync<(int Id, string PlayerName)>(
                     $"INSERT INTO hierarchy_player (relation_id, player_name) VALUES {insertString} RETURNING id, player_name");
@@ -286,9 +324,9 @@ internal static class Program
                 return new List<int>();
         
             var totalIds = new List<int>();
-            for (var i = 0; i < relations.Count; i += BatchSize)
+            for (var i = 0; i < relations.Count; i += _batchSize)
             {
-                var batch = relations.Skip(i).Take(BatchSize).ToList();
+                var batch = relations.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.ParentId}','{r.Level}','{r.Name}')"));
                 var ids = await connection.QueryAsync<int>($"INSERT INTO hierarchy_relation (parent_id, level, name) VALUES {insertString} RETURNING id");
                 totalIds.AddRange(ids);
@@ -302,7 +340,7 @@ internal static class Program
         Console.WriteLine("Generating ltree hierarchical data...");
         var sw = Stopwatch.StartNew();
 
-        await using var connection = new NpgsqlConnection(ConnectionString);
+        await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
         
         // Get the 'all' root node
@@ -316,7 +354,7 @@ internal static class Program
         nodeIds["all"] = allNode.Id;
         
         // Insert companies
-        for (var c = 1; c <= CompanyCount; c++)
+        for (var c = 1; c <= _companyCount; c++)
         {
             var companyName = $"Company{c}";
             var companyNode = await InsertLtreeHierarchyRelation(connection, 1, allNode.Path, companyName);
@@ -324,7 +362,7 @@ internal static class Program
             nodeIds[companyName] = companyNode.Id;
             
             // Insert subsystems for this company
-            for (var s = 1; s <= SubsystemsPerCompany; s++)
+            for (var s = 1; s <= _subsystemsPerCompany; s++)
             {
                 var subsystemName = $"Subsystem{s}";
                 var subsystemKey = $"{companyName}_{subsystemName}";
@@ -333,7 +371,7 @@ internal static class Program
                 nodeIds[subsystemKey] = subsystemNode.Id;
                 
                 // Insert webids for this subsystem
-                for (var w = 1; w <= WebIdsPerSubsystem; w++)
+                for (var w = 1; w <= _webIdsPerSubsystem; w++)
                 {
                     var webIdName = $"WebId{w}";
                     var webIdKey = $"{subsystemKey}_{webIdName}";
@@ -347,7 +385,7 @@ internal static class Program
                     var random = new Random();
                     
                     // Generate players for this webid
-                    for (var p = 1; p <= PlayersPerWebId; p++)
+                    for (var p = 1; p <= _playersPerWebId; p++)
                     {
                         var playerName = $"Player{c}_{s}_{w}_{p}";
                         players.Add((webIdNode.Id, playerName));
@@ -361,7 +399,7 @@ internal static class Program
                     {
                         var playerId = playerIdMap[player.PlayerName];
                         
-                        for (var r = 1; r <= RecordsPerPlayer; r++)
+                        for (var r = 1; r <= _recordsPerPlayer; r++)
                         {
                             // var balance = random.Next(1, 10000);
                             const int balance = 10;
@@ -406,9 +444,9 @@ internal static class Program
                 return result;
             
             var insertedPlayers = new List<(int Id, string PlayerName)>();
-            for (var i = 0; i < players.Count; i += BatchSize)
+            for (var i = 0; i < players.Count; i += _batchSize)
             {
-                var batch = players.Skip(i).Take(BatchSize).ToList();
+                var batch = players.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.RelationId}','{r.PlayerName}')"));
                 var insertResult = await connection.QueryAsync<(int Id, string PlayerName)>($"INSERT INTO hierarchy_player_ltree (relation_id, player_name) VALUES {insertString} RETURNING id, player_name");
                 insertedPlayers.AddRange(insertResult);
@@ -427,9 +465,9 @@ internal static class Program
             if (records.Count == 0)
                 return;
             
-            for (var i = 0; i < records.Count; i += BatchSize)
+            for (var i = 0; i < records.Count; i += _batchSize)
             {
-                var batch = records.Skip(i).Take(BatchSize).ToList();
+                var batch = records.Skip(i).Take(_batchSize).ToList();
                 var insertString = string.Join(",", batch.Select(r => $"('{r.Path}','{r.PlayerId}','{r.Balance}')"));
                 await connection.ExecuteAsync($"INSERT INTO hierarchy_records_ltree (path, player_id, balance) VALUES {insertString}");
             }
